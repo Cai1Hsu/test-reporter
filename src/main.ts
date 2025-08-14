@@ -19,6 +19,7 @@ import {JestJunitParser} from './parsers/jest-junit/jest-junit-parser'
 import {MochaJsonParser} from './parsers/mocha-json/mocha-json-parser'
 import {RspecJsonParser} from './parsers/rspec-json/rspec-json-parser'
 import {SwiftXunitParser} from './parsers/swift-xunit/swift-xunit-parser'
+import { NextestJunitParser } from './parsers/nextest-junit/nextest-junit-parser'
 
 import {normalizeDirPath, normalizeFilePath} from './utils/path-utils'
 import {getCheckRunContext} from './utils/github-utils'
@@ -264,6 +265,8 @@ class TestReporter {
         return new RspecJsonParser(options)
       case 'swift-xunit':
         return new SwiftXunitParser(options)
+      case 'nextest-junit':
+        return new NextestJunitParser(options)
       default:
         throw new Error(`Input variable 'reporter' is set to invalid value '${reporter}'`)
     }
