@@ -190,55 +190,56 @@ class TestReporter {
       core.info(summary)
       core.summary.addRaw(`# ${shortSummary}`)
       await core.summary.addRaw(summary).write()
-    } else {
-      core.info(`Creating check run ${name}`)
-      const createResp = await this.octokit.rest.checks.create({
-        head_sha: this.context.sha,
-        name,
-        status: 'in_progress',
-        output: {
-          title: name,
-          summary: ''
-        },
-        ...github.context.repo
-      })
-
-      core.info('Creating report summary')
-      baseUrl = createResp.data.html_url as string
-      const summary = getReport(results, {
-        listSuites,
-        listTests,
-        baseUrl,
-        onlySummary,
-        useActionsSummary,
-        badgeTitle,
-        reportTitle
-      })
-
-      core.info('Creating annotations')
-      const annotations = getAnnotations(results, this.maxAnnotations)
-
-      const isFailed = this.failOnError && results.some(tr => tr.result === 'failed')
-      const conclusion = isFailed ? 'failure' : 'success'
-
-      core.info(`Updating check run conclusion (${conclusion}) and output`)
-      const resp = await this.octokit.rest.checks.update({
-        check_run_id: createResp.data.id,
-        conclusion,
-        status: 'completed',
-        output: {
-          title: shortSummary,
-          summary,
-          annotations
-        },
-        ...github.context.repo
-      })
-      core.info(`Check run create response: ${resp.status}`)
-      core.info(`Check run URL: ${resp.data.url}`)
-      core.info(`Check run HTML: ${resp.data.html_url}`)
-      core.setOutput('url', resp.data.url)
-      core.setOutput('url_html', resp.data.html_url)
     }
+
+    // Generate annotation whenever actions summary is enabled
+    core.info(`Creating check run ${name}`)
+    const createResp = await this.octokit.rest.checks.create({
+      head_sha: this.context.sha,
+      name,
+      status: 'in_progress',
+      output: {
+        title: name,
+        summary: ''
+      },
+      ...github.context.repo
+    })
+
+    core.info('Creating report summary')
+    baseUrl = createResp.data.html_url as string
+    const summary = getReport(results, {
+      listSuites,
+      listTests,
+      baseUrl,
+      onlySummary,
+      useActionsSummary,
+      badgeTitle,
+      reportTitle
+    })
+
+    core.info('Creating annotations')
+    const annotations = getAnnotations(results, this.maxAnnotations)
+
+    const isFailed = this.failOnError && results.some(tr => tr.result === 'failed')
+    const conclusion = isFailed ? 'failure' : 'success'
+
+    core.info(`Updating check run conclusion (${conclusion}) and output`)
+    const resp = await this.octokit.rest.checks.update({
+      check_run_id: createResp.data.id,
+      conclusion,
+      status: 'completed',
+      output: {
+        title: shortSummary,
+        summary,
+        annotations
+      },
+      ...github.context.repo
+    })
+    core.info(`Check run create response: ${resp.status}`)
+    core.info(`Check run URL: ${resp.data.url}`)
+    core.info(`Check run HTML: ${resp.data.html_url}`)
+    core.setOutput('url', resp.data.url)
+    core.setOutput('url_html', resp.data.html_url)
 
     return results
   }
