@@ -423,51 +423,50 @@ class TestReporter {
             core.summary.addRaw(`# ${shortSummary}`);
             await core.summary.addRaw(summary).write();
         }
-        else {
-            core.info(`Creating check run ${name}`);
-            const createResp = await this.octokit.rest.checks.create({
-                head_sha: this.context.sha,
-                name,
-                status: 'in_progress',
-                output: {
-                    title: name,
-                    summary: ''
-                },
-                ...github.context.repo
-            });
-            core.info('Creating report summary');
-            baseUrl = createResp.data.html_url;
-            const summary = (0, get_report_1.getReport)(results, {
-                listSuites,
-                listTests,
-                baseUrl,
-                onlySummary,
-                useActionsSummary,
-                badgeTitle,
-                reportTitle
-            });
-            core.info('Creating annotations');
-            const annotations = (0, get_annotations_1.getAnnotations)(results, this.maxAnnotations);
-            const isFailed = this.failOnError && results.some(tr => tr.result === 'failed');
-            const conclusion = isFailed ? 'failure' : 'success';
-            core.info(`Updating check run conclusion (${conclusion}) and output`);
-            const resp = await this.octokit.rest.checks.update({
-                check_run_id: createResp.data.id,
-                conclusion,
-                status: 'completed',
-                output: {
-                    title: shortSummary,
-                    summary,
-                    annotations
-                },
-                ...github.context.repo
-            });
-            core.info(`Check run create response: ${resp.status}`);
-            core.info(`Check run URL: ${resp.data.url}`);
-            core.info(`Check run HTML: ${resp.data.html_url}`);
-            core.setOutput('url', resp.data.url);
-            core.setOutput('url_html', resp.data.html_url);
-        }
+        // Generate annotation whenever actions summary is enabled
+        core.info(`Creating check run ${name}`);
+        const createResp = await this.octokit.rest.checks.create({
+            head_sha: this.context.sha,
+            name,
+            status: 'in_progress',
+            output: {
+                title: name,
+                summary: ''
+            },
+            ...github.context.repo
+        });
+        core.info('Creating report summary');
+        baseUrl = createResp.data.html_url;
+        const summary = (0, get_report_1.getReport)(results, {
+            listSuites,
+            listTests,
+            baseUrl,
+            onlySummary,
+            useActionsSummary,
+            badgeTitle,
+            reportTitle
+        });
+        core.info('Creating annotations');
+        const annotations = (0, get_annotations_1.getAnnotations)(results, this.maxAnnotations);
+        const isFailed = this.failOnError && results.some(tr => tr.result === 'failed');
+        const conclusion = isFailed ? 'failure' : 'success';
+        core.info(`Updating check run conclusion (${conclusion}) and output`);
+        const resp = await this.octokit.rest.checks.update({
+            check_run_id: createResp.data.id,
+            conclusion,
+            status: 'completed',
+            output: {
+                title: shortSummary,
+                summary,
+                annotations
+            },
+            ...github.context.repo
+        });
+        core.info(`Check run create response: ${resp.status}`);
+        core.info(`Check run URL: ${resp.data.url}`);
+        core.info(`Check run HTML: ${resp.data.html_url}`);
+        core.setOutput('url', resp.data.url);
+        core.setOutput('url_html', resp.data.html_url);
         return results;
     }
     getParser(reporter, options) {
@@ -1711,7 +1710,7 @@ class NextestJunitParser {
         const time = parseFloat(testCase.$.time) * 1000 || 0;
         if (testCase.failure) {
             const failure = testCase.failure[0];
-            const errorMessage = failure.$.message;
+            let errorMessage = failure.$.message;
             // Parse path and line number from error message
             // Example: "thread 'sys_write::tests::test_bad_address_with_invalid_buffer' panicked at test-utilities\src\memory.rs:311:9"
             let path;
@@ -1721,6 +1720,14 @@ class NextestJunitParser {
             if (match) {
                 path = match[1];
                 line = parseInt(match[2], 10);
+            }
+            // Extract panic reason from failure._ and combine with errorMessage
+            if (failure._) {
+                // Try to extract panic reason from the second line of failure._
+                const lines = failure._.split('\n');
+                if (lines.length >= 2 && lines[1].trim() !== '') {
+                    errorMessage = `${errorMessage}: ${lines[1].trim()}`;
+                }
             }
             const testCaseError = {
                 path: path,
