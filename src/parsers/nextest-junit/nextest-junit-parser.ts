@@ -69,6 +69,14 @@ export class NextestJunitParser implements TestParser {
         if (lines.length >= 2 && lines[1].trim() !== '') {
           errorMessage = `${errorMessage}: ${lines[1].trim()}`;
         }
+
+        for (let i = 2; i < lines.length; i++) {
+          // break untils the line is empty, starts with `stack backtrace:` or `note:`
+          if (lines[i].trim() === '' || lines[i].startsWith('stack backtrace:') || lines[i].startsWith('note:')) {
+            break;
+          }
+          errorMessage += `\n${lines[i].trim()}`;
+        }
       }
 
       const testCaseError: TestCaseError = {
