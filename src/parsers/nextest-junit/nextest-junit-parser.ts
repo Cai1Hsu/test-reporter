@@ -48,7 +48,7 @@ export class NextestJunitParser implements TestParser {
 
     if (testCase.failure) {
       const failure = testCase.failure[0];
-      const errorMessage = failure.$.message;
+      let errorMessage = failure.$.message;
 
       // Parse path and line number from error message
       // Example: "thread 'sys_write::tests::test_bad_address_with_invalid_buffer' panicked at test-utilities\src\memory.rs:311:9"
@@ -60,6 +60,15 @@ export class NextestJunitParser implements TestParser {
       if (match) {
         path = match[1];
         line = parseInt(match[2], 10);
+      }
+
+      // Extract panic reason from failure._ and combine with errorMessage
+      if (failure._) {
+        // Try to extract panic reason from the second line of failure._
+        const lines = failure._.split('\n');
+        if (lines.length >= 2 && lines[1].trim() !== '') {
+          errorMessage = `${errorMessage}: ${lines[1].trim()}`;
+        }
       }
 
       const testCaseError: TestCaseError = {
